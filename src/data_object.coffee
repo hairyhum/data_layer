@@ -7,7 +7,7 @@ Environment = require './environment'
 class DataObject
   constructor:(options = null) ->
     @dump_period = options.period ? DEFAULT_DUMP_PERIOD
-    @dataStore = new DataStore(options.store ? Environment.getStore())
+    @dataStore = DataStore(options.store ? Environment.getStore())
     @data = options.data ? {}
     keys = options.keys ? []
     @data[key] = undefined for key in keys when typeof(@data[key]) == 'undefined'

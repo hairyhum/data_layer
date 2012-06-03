@@ -7,10 +7,17 @@ store_types = [
   'remote'
 ]
 
-DataStore = (options) ->
-  type = options.type
-  should.notBeEmpty(type)
-  should.contain(store_types, type)
+DataStore = do ->
+  stores = []
+
+
+  DataStore = (options) ->
+    provider =
+    type = options.type
+    should.notBeEmpty(type)
+    should.contain(store_types, type)
+
+
 
 
 
