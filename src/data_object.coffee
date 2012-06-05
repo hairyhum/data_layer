@@ -1,38 +1,55 @@
-DEFAULT_DUMP_PERIOD = 5000
-exports.DEFAULT_DUMP_INTERVAL = DEFAULT_DUMP_PERIOD
+DUMP_INTERVAL = 5000
+exports.DUMP_INTERVAL = DUMP_INTERVAL
+
+DUMP_INTERVAL_SYNC = 50000
+exports.DUMP_INTERVAL_SYNC = DUMP_INTERVAL_SYNC
+
 
 DataStore = require './data_store'
+SyncProvider = require './sync_provider'
+LocalProvider = require './browser/local_storage_provider'
+SyncService = require './sync'
 
 
 class DataObject
-  killInterval = ->
-    clearInterval(@interval)
-    @interval = undefined
+  constructor:(data, options = null) ->
+    dump_period = options.interval ? DUMP_INTERVAL
+    @local_store = DataStore(new LocalProvider(options.prefix, options.suffix))
 
-  constructor:(options = null) ->
-    @dump_period = options.period ? DEFAULT_DUMP_PERIOD
-    @dataStore = DataStore(options.provider)
-    @data = options.data ? {}
-    keys = options.keys ? []
-    (@data[key] = undefined) for key in keys when typeof(@data[key]) == 'undefined'
+    if options.sync
+      sync = options.sync
+      sync_period = sync.interval ? DUMP_INTERVAL_SYNC
+      @sync_store = DataStore(new SyncProvider(sync.provider))
+
+    @data = data ? {}
+    keys = key for key,val of data when typeof data[key] is 'undefined'
     @load ->
-      @interval = setInterval (=> @save()), @dump_period
-      options.events?.down = ((cb) => @dump(cb))
+      interval = setInterval (=> @save()), dump_period
+      if sync
+        sync_interval = setInterval (=> @sync()), dump_period
+      @kill = (cb) ->
+        clearInterval interval
+        clearInterval sync_interval
+        @save(cb)
+      options.events?.down = (cb) => @kill(cb)
 
   save: (cb) ->
-    @dataStore.save(@data, cb)
+    @local_store.save @data, cb
 
   load: (cb) ->
-    @dataStore.load(@data,cb)
+    @local_store.load @data,cb
 
-  dump: (cb) ->
-    killInterval.call(this)
-    @save(cb)
+  sync: (cb) ->
+    @save ->
+      SyncService.sync @data, @sync_store
 
-  dispose: (cb) ->
-    @dataStore.delete(@data,cb)
+  destroy_local: (cb) ->
+    @kill ->
+      @local_store.delete @data,cb
 
-
+  destroy: (cb) ->
+    @sync_store.delete @data, ->
+      @destroy_local cb
 
 
 

@@ -7,25 +7,28 @@ DataStore = (provider) ->
   should.haveProperty provider, 'get'
   should.haveProperty provider, 'set'
   should.haveProperty provider, 'delete'
+  iterateAsync = (fun) ->
+    (data,cb) ->
+      props = key for key,val of data
+      async.forEachSeries props
+      ,(prop,callback) =>
+        fun.call(@, prop, callback)
+      ,(err) ->
+        cb(err)
   Store =
     provider: provider
-    load: (data, cb) ->
-      props = data.getOwnPropertyNames()
-      async.forEachSeries props
-      (prop,callback) =>
-        @provider.get prop, (value,err) ->
-          data[prop] = value
-          callback(err)
-      (err) ->
-        cb(err)
-    save: (data, cb) ->
-      props = data.getOwnPropertyNames()
-      async.forEachSeries props
-      (prop, callback) =>
-        @provider.set data[prop], callback
-      (err) ->
-        cb(err)
+    load: iterateAsync (prop,callback) ->
+      @provider.get prop, (value,err) ->
+        data[prop] = value
+        callback(err)
 
+    save: iterateAsync (prop, callback) ->
+      @provider.set data[prop], callback
+
+    delete: iterateAsync (prop, callback) ->
+      @provider.delete prop, (value,err) ->
+        data[prop] = value
+        callback(err)
 
 
 
