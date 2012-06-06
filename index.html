@@ -1,0 +1,66 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+    "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+  <title></title>
+  <script type="text/javascript" src="http://code.jquery.com/jquery-1.7.2.min.js"></script>
+  <script type="text/javascript" src="pouch.alpha.js"></script>
+  <script type="text/javascript">
+    $(function () {
+      var remote = 'http://fedotov.iriscouch.com/authors',
+          local = 'idb://authors';
+      $('#go').click(function () {
+        var authors = [
+          {name:'Dale Harvey', commits:253},
+          {name:'Mikeal Rogers', commits:42},
+          {name:'Johannes J. Schmidt', commits:13},
+          {name:'Randall Leeds', commits:9}
+        ];
+
+        remove = function(db,id,cb){ db.get(id, function(err,doc){ db.remove(doc,cb); }); }
+          Pouch(local, function (err, db) {
+            // Opened a new database
+            db.bulkDocs({docs:authors}, function (err, results) {
+              // Saved the documents into the database
+              db.replicate.to(remote, function () {
+                // The documents are now in the cloud!
+                db.allDocs(function (err, response) {
+                  var rows = response.rows,
+                      count = rows.length,
+                      i = 0;
+                  for (i; i < count; i++) {
+                    db.get(rows[i].id, function (err, doc) {
+                      console.log(doc);
+                    });
+                  }
+                });
+              });
+            });
+          });
+
+
+      });
+      $('#add').click(function(){
+        var authors = [
+          {a:'some',b:'other'},
+          {kill:'humans',glory:'robots'}
+        ];
+        Pouch(local, function (err, db) {
+          db.bulkDocs({docs:authors}, function(err,results){
+            Pouch.replicate(local, remote, function(){
+              Pouch.replicate(remote,local, function(){});
+            })
+          });
+        });
+      });
+    });
+  </script>
+</head>
+<body>
+<div id='data'>
+  <button id='go'>GO</button>
+  <button id='add'>ADD</button>
+</div>
+
+</body>
+</html>
